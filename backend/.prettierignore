@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+.github/
+package-lock.json
+.next
+.env
+.env.*
