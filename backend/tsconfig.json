@@ -2,8 +2,8 @@
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // File Layout
-     "rootDir": "./src",
-     "outDir": "./dist",
+    "rootDir": "./src",
+    "outDir": "./dist",
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
@@ -41,7 +41,13 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "esModuleInterop": true,
-"allowSyntheticDefaultImports": true,
+    "allowSyntheticDefaultImports": true
   },
-  "exclude": ["prisma.config.ts", "node_modules", "test", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "prisma.config.ts",
+    "node_modules",
+    "test",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

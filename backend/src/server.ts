@@ -26,21 +26,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Global Error Handler
-app.use(
-  (
-    err: Error,
-    req: Request,
-    res: Response,
-    _next: NextFunction
-  ) => {
-    logger.error({
-      message: err.message,
-      stack: err.stack,
-    });
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+  });
 
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-);
+  res.status(500).json({ error: "Internal Server Error" });
+});
 
 // Health Check
 app.get("/", (_req, res) => {
@@ -56,5 +49,4 @@ if (process.env.NODE_ENV !== "test") {
   });
 }
 
-
-export default app
+export default app;
