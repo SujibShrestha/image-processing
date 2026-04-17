@@ -1,5 +1,7 @@
 import request from "supertest";
 import jwt from "jsonwebtoken";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import type { Mock } from "jest-mock";
 import app from "../src/server.js";
 import { prisma } from "../src/config/db.js";
 
@@ -17,11 +19,11 @@ jest.mock("../src/config/db.js", () => ({
 
 const mockedPrisma = prisma as unknown as {
   user: {
-    findMany: jest.Mock;
-    findUnique: jest.Mock;
-    update: jest.Mock;
-    findFirst: jest.Mock;
-    delete: jest.Mock;
+    findMany: Mock<(args?: unknown) => Promise<unknown[]>>;
+    findUnique: Mock<(args?: unknown) => Promise<unknown | null>>;
+    update: Mock<(args?: unknown) => Promise<unknown>>;
+    findFirst: Mock<(args?: unknown) => Promise<unknown | null>>;
+    delete: Mock<(args?: unknown) => Promise<unknown>>;
   };
 };
 
