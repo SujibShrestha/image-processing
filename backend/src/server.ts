@@ -8,6 +8,8 @@ import logger from "./utils/logger.js";
 import helmet from "helmet";
 import "dotenv/config";
 import cors from "cors";
+import authRouter from "./routes/auth.routes.js";
+import usersRouter from "./routes/users.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,15 +27,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Global Error Handler
-app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  logger.error({
-    message: err.message,
-    stack: err.stack,
-  });
-
-  res.status(500).json({ error: "Internal Server Error" });
-});
+// Routes
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", usersRouter);
 
 // Health Check
 app.get("/", (_req, res) => {
@@ -41,6 +37,16 @@ app.get("/", (_req, res) => {
     status: "success",
     message: "API is running",
   });
+});
+
+// Global Error Handler
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+  });
+
+  res.status(500).json({ error: "Internal Server Error" });
 });
 
 if (process.env.NODE_ENV !== "test") {

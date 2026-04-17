@@ -7,7 +7,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json())
   ),
-  defaultMeta: { service: "acquistions-api" },
+  defaultMeta: { service: "image-api" },
   transports: [
     //
     // - Write all logs with importance level of `error` or higher to `error.log`
