@@ -9,6 +9,7 @@ import helmet from "helmet";
 import "dotenv/config";
 import cors from "cors";
 import authRouter from "./routes/auth.routes.js";
+import usersRouter from "./routes/users.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/users", usersRouter);
 
 // Health Check
 app.get("/", (_req, res) => {
