@@ -6,3 +6,5 @@ package-lock.json
 .next
 .env
 .env.*
+prisma.*
+src/generated/

@@ -10,8 +10,10 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "lint": "eslint .",
+    "lint:ci": "eslint . --max-warnings=0 --rule \"indent: off\" --rule \"semi: off\" --rule \"quotes: off\" --rule \"@typescript-eslint/no-unused-vars: off\"",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "jest"
   },
   "keywords": [
