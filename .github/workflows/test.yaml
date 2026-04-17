@@ -36,8 +36,10 @@ jobs:
         run: npm test
 
       - name: Upload coverage reports
-        if: ${{ always() && secrets.CODECOV_TOKEN != '' }}
+        if: ${{ always() && env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: backend/coverage/**/*.json
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          with:
+               token: ${{ secrets.CODECOV_TOKEN }}
+               files: backend/coverage/**/*.json
