@@ -1,13 +1,20 @@
 import type { Response } from "express";
 import type { ImageRequest } from "../types/images.types.js";
 import type { AuthRequest } from "../types/auth.types.js";
-import fs from "fs/promises";
 import path from "path";
 import sharp, { type OverlayOptions } from "sharp";
 import { prisma } from "../config/db.js";
 import type { Image as LocalImage } from "../types/images.types.js";
 import logger from "../utils/logger.js";
-import { uploadPath, publicUrlFor, ensureUploadsDirs } from "../utils/image.utils.js";
+import { publicUrlFor, ensureUploadsDirs } from "../utils/image.utils.js";
+import {
+  buildStoredFileName,
+  deleteStoredImage,
+  isProductionStorage,
+  readStoredImageBuffer,
+  saveDerivedImage,
+  storeImageBuffer,
+} from "../utils/storage.utils.js";
 
 ensureUploadsDirs();
 
@@ -25,13 +32,21 @@ export const uploadImage = async (req: ImageRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const publicId = file.filename;
-    const relative = path.join("originals", publicId);
+    const fileName = isProductionStorage
+      ? buildStoredFileName(file.originalname)
+      : file.filename;
+
+    const storedImage = isProductionStorage
+      ? await storeImageBuffer(file.buffer, fileName, "originals", file.mimetype)
+      : {
+          url: publicUrlFor(path.join("originals", fileName)),
+          publicId: fileName,
+        };
 
     const image = await prisma.image.create({
       data: {
-        url: publicUrlFor(relative),
-        publicId,
+        url: storedImage.url,
+        publicId: storedImage.publicId,
         userId: user.id,
       },
     });
@@ -57,9 +72,9 @@ export const listImages = async (req: AuthRequest, res: Response) => {
     // enrich with metadata
     const enriched = await Promise.all(
       images.map(async (img: LocalImage) => {
-        const fileOnDisk = uploadPath(img.url.replace("/uploads/", ""));
         try {
-          const metadata = await sharp(fileOnDisk).metadata();
+          const fileBuffer = await readStoredImageBuffer(img);
+          const metadata = await sharp(fileBuffer).metadata();
           return { ...img, metadata };
         } catch (_e) {
           return { ...img };
@@ -173,12 +188,11 @@ export const getImage = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "Image not found" });
     }
 
-    const fileOnDisk = uploadPath(image.url.replace("/uploads/", ""));
     let buffer: Buffer;
     try {
-      buffer = await fs.readFile(fileOnDisk);
+      buffer = await readStoredImageBuffer(image);
     } catch (error) {
-      logger.warn({ message: "Image file missing on disk", fileOnDisk, imageId: image.id, error });
+      logger.warn({ message: "Image file missing", imageId: image.id, error });
       return res.status(404).json({ message: "Image file not found" });
     }
 
@@ -195,10 +209,14 @@ export const getImage = async (req: AuthRequest, res: Response) => {
 
     if (qs.save === "true") {
       const outName = `${Date.now()}-${image.publicId}`;
-      const outRel = path.join("derived", outName);
-      await fs.writeFile(uploadPath(outRel), out);
+      const outMeta = await sharp(out).metadata();
+      const savedMime =
+        outMeta.format === "png" ? "image/png" :
+        outMeta.format === "webp" ? "image/webp" :
+        "image/jpeg";
+      const savedImage = await saveDerivedImage(out, outName, savedMime);
       const newImage = await prisma.image.create({
-        data: { url: publicUrlFor(outRel), publicId: outName, userId: user.id },
+        data: { url: savedImage.url, publicId: savedImage.publicId, userId: user.id },
       });
       // FIX: correct content type for JSON response
       return res.status(201).json({ saved: true, image: newImage });
@@ -220,5 +238,81 @@ export const getImage = async (req: AuthRequest, res: Response) => {
       stack: error instanceof Error ? error.stack : undefined,
     });
     return res.status(500).json({ message: "Failed to retrieve image" });
+  }
+};
+
+export const updateImage = async (req: ImageRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const id = Number(req.params.id);
+    const file = req.file;
+
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid image ID" });
+    if (!file) return res.status(400).json({ message: "No image uploaded." });
+
+    const image = await prisma.image.findUnique({ where: { id } });
+
+    if (!image || image.userId !== user.id) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    const fileName = isProductionStorage
+      ? buildStoredFileName(file.originalname)
+      : file.filename;
+
+    const updatedStoredImage = isProductionStorage
+      ? await storeImageBuffer(file.buffer, fileName, "originals", file.mimetype)
+      : {
+          url: publicUrlFor(path.join("originals", fileName)),
+          publicId: fileName,
+        };
+
+    const updatedImage = await prisma.image.update({
+      where: { id },
+      data: {
+        url: updatedStoredImage.url,
+        publicId: updatedStoredImage.publicId,
+      },
+    });
+
+    try {
+      await deleteStoredImage(image);
+    } catch (error) {
+      logger.warn({
+        message: "Failed to remove previous image file during update",
+        imageId: id,
+        error,
+      });
+    }
+
+    return res.status(200).json({ image: updatedImage });
+  } catch (error) {
+    logger.error({ message: "Update image failed", error });
+    return res.status(500).json({ message: "Failed to update image" });
+  }
+};
+
+export const deleteImage = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    const id = Number(req.params.id);
+
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (isNaN(id)) return res.status(400).json({ message: "Invalid image ID" });
+
+    const image = await prisma.image.findUnique({ where: { id } });
+
+    if (!image || image.userId !== user.id) {
+      return res.status(404).json({ message: "Image not found" });
+    }
+
+    await deleteStoredImage(image);
+    await prisma.image.delete({ where: { id } });
+
+    return res.status(200).json({ message: "Image deleted successfully" });
+  } catch (error) {
+    logger.error({ message: "Delete image failed", error });
+    return res.status(500).json({ message: "Failed to delete image" });
   }
 };
