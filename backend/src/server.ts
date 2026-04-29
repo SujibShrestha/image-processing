@@ -10,6 +10,7 @@ import "dotenv/config";
 import cors from "cors";
 import authRouter from "./routes/auth.routes.js";
 import usersRouter from "./routes/users.routes.js";
+import imagesRouter from "./routes/images.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/users", usersRouter);
+app.use("/api/v1/images", imagesRouter);
 
 // Health Check
 app.get("/", (_req, res) => {
