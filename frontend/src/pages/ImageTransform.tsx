@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ImagePlus, Save, Trash2 } from 'lucide-react'
+import { Download, ImagePlus, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dropzone } from '@/components/ui/dropzone'
@@ -47,6 +47,7 @@ export function ImageTransform() {
   const [isUploading, setIsUploading] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
   const selectedImage = useMemo(
@@ -203,6 +204,40 @@ export function ImageTransform() {
     }
   }
 
+  const handleDownload = async () => {
+    if (!previewSrc && !selectedImage) {
+      setLocalError('No image to download.')
+      return
+    }
+
+    setIsDownloading(true)
+    setLocalError(null)
+
+    try {
+      const imageUrl = previewSrc || selectedImage?.url
+      if (!imageUrl) {
+        throw new Error('No image URL available')
+      }
+
+      const response = await fetch(imageUrl)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `image-${Date.now()}.${form.format}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('Image downloaded.')
+    } catch (caughtError) {
+      setLocalError(getErrorMessage(caughtError, 'Unable to download the image.'))
+      toast.error('Download failed.')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-3">
@@ -320,6 +355,10 @@ export function ImageTransform() {
               <Button onClick={handleSave} disabled={!selectedImageId || isSaving}>
                 <Save className="h-4 w-4" />
                 {isSaving ? 'Saving' : 'Save as new image'}
+              </Button>
+              <Button onClick={handleDownload} disabled={!selectedImage || isDownloading}>
+                <Download className="h-4 w-4" />
+                {isDownloading ? 'Downloading' : 'Download'}
               </Button>
             </div>
 

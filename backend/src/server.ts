@@ -11,6 +11,7 @@ import cors from "cors";
 import authRouter from "./routes/auth.routes.js";
 import usersRouter from "./routes/users.routes.js";
 import imagesRouter from "./routes/images.routes.js";
+import { apiRateLimiter } from "./middlewares/rate-limit.middleware.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/api/v1", apiRateLimiter);
 
 // Routes
 app.use("/api/v1/auth", authRouter);
